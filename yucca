@@ -1,0 +1,217 @@
+#!/usr/bin/env python
+
+# Copyright (c)2012 Chris Pressey, Cat's Eye Technologies
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+import re
+import sys
+import fileinput
+from optparse import OptionParser
+
+
+class BasicCommand(object):
+    @classmethod
+    def create(class_, text):
+        match = re.match(r'^\s*goto\s*(\d+)\s*$', text, re.I)
+        if match:
+            return Goto(int(match.group(1)))
+        match = re.match(r'^\s*gosub\s*(\d+)\s*$', text, re.I)
+        if match:
+            return Gosub(int(match.group(1)))
+        match = re.match(r'^\s*(if(.*?)(then|goto))\s*(\d+)\s*$', text, re.I)
+        if match:
+            return IfThenLine(match.group(1), int(match.group(4)))
+        match = re.match(r'^\s*(if(.*?)then)\s*(.*?)\s*$', text, re.I)
+        if match:
+            return IfThen(match.group(1), BasicCommand.create(match.group(3)))
+        match = re.match(r'^\s*(on(.*?)go(to|sub))\s*(.*?)\s*$', text, re.I)
+        if match:
+            line_numbers = [int(x.strip()) for x in match.group(4).split(',')]
+            return OnLines(match.group(1), line_numbers)
+        return GenericCommand(text)
+
+    def referenced_line_numbers(self):
+        raise NotImplemented
+
+
+class GenericCommand(BasicCommand):
+    def __init__(self, text):
+        self.text = text
+
+    def __str__(self):
+        return self.text
+
+    def referenced_line_numbers(self):
+        return []
+
+
+class IfThen(BasicCommand):
+    def __init__(self, body, subsequent):
+        self.body = body
+        self.subsequent = subsequent
+
+    def __str__(self):
+        return "%s %s" % (self.body, self.subsequent)
+
+    def referenced_line_numbers(self):
+        return self.subsequent.referenced_line_numbers()
+
+
+class IfThenLine(BasicCommand):
+    def __init__(self, body, line_number):
+        self.body = body
+        self.line_number = line_number
+
+    def __str__(self):
+        return "%s %s" % (self.body, self.line_number)
+
+    def referenced_line_numbers(self):
+        return [self.line_number]
+
+
+class Goto(BasicCommand):
+    def __init__(self, line_number):
+        self.line_number = line_number
+
+    def __str__(self):
+        return "GOTO %s" % self.line_number
+
+    def referenced_line_numbers(self):
+        return [self.line_number]
+
+
+class Gosub(BasicCommand):
+    def __init__(self, line_number):
+        self.line_number = line_number
+
+    def __str__(self):
+        return "GOSUB %s" % self.line_number
+
+    def referenced_line_numbers(self):
+        return [self.line_number]
+
+
+class OnLines(BasicCommand):
+    def __init__(self, body, line_numbers):
+        self.body = body
+        self.line_numbers = line_numbers
+
+    def __str__(self):
+        return "%s %s" % (self.body,
+                          ','.join(str(x) for x in self.line_numbers))
+
+    def referenced_line_numbers(self):
+        return self.line_numbers
+
+
+class BasicLine(object):
+    def __init__(self, text):
+        self.line_number = None
+        text = text.strip()
+        match = re.match(r'^(\d+)\s+(.*?)$', text)
+        if match:
+            self.line_number = int(match.group(1))
+            text = match.group(2)
+
+        self.commands = []
+
+        index = 0
+        start = 0
+        state = 'cmd'
+        while index < len(text):
+            if state == 'cmd':
+                if text[index] == '"':
+                    state = 'quoted'
+                elif text[index] == ':':
+                    cmd = BasicCommand.create(text[start:index])
+                    self.commands.append(cmd)
+                    start = index + 1
+            elif state == 'quoted':
+                if text[index] == '"':
+                    state = 'cmd'
+            index += 1
+        cmd = BasicCommand.create(text[start:index])
+        self.commands.append(cmd)
+
+    def __str__(self):
+        text = ':'.join(str(x) for x in self.commands)
+        if self.line_number:
+            return "%s %s" % (self.line_number, text)
+        else:
+            return text
+
+    def referenced_line_numbers(self):
+        line_numbers = []
+        for command in self.commands:
+            line_numbers.extend(command.referenced_line_numbers())
+        return line_numbers
+
+
+class BasicProgram(object):
+
+    def __init__(self, text=None):
+        self.lines = []
+        if text is not None:
+            for line in text.split('\n'):
+                self.add_line(line)
+
+    def add_line(self, line):
+        self.lines.append(BasicLine(line))
+
+    def check_line_numbers(self):
+        referenced = {}
+        defined = {}
+        errors = 0
+        for line in self.lines:
+            if line.line_number is not None:
+                defined[line.line_number] = line
+                referenced[line.line_number] = line.referenced_line_numbers()
+        for (line_number, referenced_line_numbers) in referenced.iteritems():
+            for referenced_line_number in referenced_line_numbers:
+                if referenced_line_number not in defined:
+                    print '?UNDEFINED STATEMENT "%s" IN: %s' % (
+                        referenced_line_number, defined[line_number])
+                    errors += 1
+        return errors
+
+    def dump(self):
+        for line in self.lines:
+            print line
+
+
+if __name__ == '__main__':
+    parser = OptionParser()
+    parser.add_option("-l", "--check-line-numbers",
+                      dest="check_line_numbers",
+                      action="store_true",
+                      help="check that all target line numbers exist")
+
+    (options, args) = parser.parse_args()
+
+    p = BasicProgram()
+    for line in fileinput.input(args):
+        p.add_line(line)
+
+    errors = 0
+
+    if options.check_line_numbers:
+        errors += p.check_line_numbers()
+
+    sys.exit(1 if errors > 0 else 0)
