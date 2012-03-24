@@ -134,8 +134,14 @@ class BasicLine(object):
 
         index = 0
         start = 0
-        state = 'cmd'
+        state = 'start'
         while index < len(text):
+            if state in ('start', 'cmd'):
+                match = re.match(r'^rem', text[index:], re.I)
+                if match:
+                    state = 'remark'
+                else:
+                    state = 'cmd'
             if state == 'cmd':
                 if text[index] == '"':
                     state = 'quoted'
@@ -143,9 +149,12 @@ class BasicLine(object):
                     cmd = BasicCommand.create(text[start:index])
                     self.commands.append(cmd)
                     start = index + 1
+                    state = 'start'
             elif state == 'quoted':
                 if text[index] == '"':
                     state = 'cmd'
+            elif state == 'remark':
+                pass
             index += 1
         cmd = BasicCommand.create(text[start:index])
         self.commands.append(cmd)
@@ -165,11 +174,39 @@ class BasicLine(object):
 
 
 class BasicProgram(object):
+    r"""An object which represents a BASIC program.
 
+    >>> b = BasicProgram('10 PRINT "HELLO"\n'
+    ...                  '20 GOTO 10\n')
+    >>> b.dump()
+    10 PRINT "HELLO"
+    20 GOTO 10
+    >>> len(b.lines)
+    2
+    >>> print b.lines[0].commands[0]
+    PRINT "HELLO"
+    >>> print b.lines[1].commands[0].__class__.__name__
+    Goto
+
+    >>> b = BasicProgram()
+    >>> b.add_line('10 PRINT "HELLO"')
+    >>> b.add_line('20 GOTO 30')
+    >>> len(b.lines)
+    2
+    >>> num_errors = b.check_line_numbers()
+    ?UNDEFINED STATEMENT "30" IN: 20 GOTO 30
+    >>> num_errors
+    1
+
+    >>> b = BasicProgram('10 REM HELLO: GOTO 10')
+    >>> len(b.lines[0].commands)
+    1
+
+    """
     def __init__(self, text=None):
         self.lines = []
         if text is not None:
-            for line in text.split('\n'):
+            for line in text.rstrip('\r\n').split('\n'):
                 self.add_line(line)
 
     def add_line(self, line):
@@ -198,12 +235,25 @@ class BasicProgram(object):
 
 if __name__ == '__main__':
     parser = OptionParser()
+    parser.add_option("-o", "--dump-output",
+                      dest="dump_output",
+                      action="store_true",
+                      help="dump (possibly transformed) program to standard "
+                           "output; implied by other options")
     parser.add_option("-l", "--check-line-numbers",
                       dest="check_line_numbers",
                       action="store_true",
                       help="check that all target line numbers exist")
+    parser.add_option("-t", "--test",
+                      action="store_true", dest="test", default=False,
+                      help="run internal test cases and exit")
 
     (options, args) = parser.parse_args()
+
+    if options.test:
+        import doctest
+        doctest.testmod()
+        sys.exit(0)
 
     p = BasicProgram()
     for line in fileinput.input(args):
@@ -214,4 +264,10 @@ if __name__ == '__main__':
     if options.check_line_numbers:
         errors += p.check_line_numbers()
 
-    sys.exit(1 if errors > 0 else 0)
+    if errors > 0:
+        sys.exit(1)
+
+    if options.dump_output:
+        p.dump()
+
+    sys.exit(0)
