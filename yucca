@@ -160,8 +160,8 @@ class BasicLine(object):
         if text is None:
             self.command = None
             return
-        text = text.strip()
-        match = re.match(r'^(\d+\s*)(.*?)$', text)
+        text = text.rstrip('\r\n')
+        match = re.match(r'^(\s*\d+\s*)(.*?)$', text)
         if match:
             self.line_number = LineNumber(match.group(1))
             text = match.group(2)
@@ -270,6 +270,7 @@ class BasicProgram(object):
     ...                  '\n'
     ...                  '800   PRINT::print:ZORK  30\n'
     ...                  '10 oN   ERROR  gOtO 100, 6,7,  800  ,3\n'
+    ...                  ' 99 what  \n'
     ...                  'if50then60\n'
     ...                  '50ifthisstuffistruegoto70\n'
     ...                  '60 If  This Stuff Is True  Then   Print:GoTo  9\n'
@@ -281,6 +282,7 @@ class BasicProgram(object):
     <BLANKLINE>
     800   PRINT::print:ZORK  30
     10 oN   ERROR  gOtO 100, 6,7,  800  ,3
+     99 what  
     if50then60
     50ifthisstuffistruegoto70
     60 If  This Stuff Is True  Then   Print:GoTo  9

@@ -79,6 +79,7 @@ TODO
 
 * Show a warning message if the program contains computed jumps.
 * Show errors in the order they occur in the program.
+* Handle duplicate and deleted lines (line number then nothing.)
 
 Plans
 -----
@@ -87,9 +88,10 @@ Plans
 redundant `GOTO` to the next line, a line conaining another `GOTO`, and
 so forth.
 
-`yucca` can dump the input program with high fidelity; it retains case
-and spacing of all lines, with the exception of stripping leading and
-trailing whitespace from every line.  This facility could be built upon
-to give `yucca` the ability to renumber a program, or to supply missing
-line numbers, or even transform a program with textual labels into one
-with line numbers.
+`yucca` can dump the input program with (as far as I can tell) total
+fidelity; it retains case and spacing of all lines, even leading and
+trailing whitespace.
+
+This facility could be built upon to give `yucca` the ability to
+renumber a program, or to supply missing line numbers, or even transform
+a program with textual labels into one with line numbers.
