@@ -56,10 +56,15 @@ file.  If this check fails, further transformations may not be performed on
 the program.  To suppress this check, pass the -L option to `yucca`.
 
 The -o option may be given to dump a copy of the program to the standard
-output.  This option is implied by several other options.
+output.  This option is implied by the following two options.
 
 The -I option strips all immediate mode commands from the program before
 analyzing and outputting it.
+
+The -R option strips all remarks (REM statements) from the program
+before analyzing and outputting it.  Note that this happens before
+analysis, so that any jumps to lines which contain only a REM will be
+found and reported.
 
 The -t option runs `yucca` through its internal test suite and exits
 immediately.
@@ -68,12 +73,14 @@ TODO
 ----
 
 * Retain whitespace exactly when dumping/transforming a program.
+* Show a warning message if the program contains computed jumps.
 
 Plans
 -----
 
 `yucca` could be easily extended to warn about "code smells" such as a 
-redundant `GOTO` to the next line, `GOTO` to a `REM` line, and so forth.
+redundant `GOTO` to the next line, a line conaining another `GOTO`, and
+so forth.
 
 `yucca` can dump the input program with high fidelity; the only things that
 it will change are the case of commands such as `GOTO` and `GOSUB`, and

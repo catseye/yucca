@@ -186,6 +186,19 @@ class BasicLine(object):
             line_numbers.extend(command.referenced_line_numbers())
         return line_numbers
 
+    def strip_remarks(self):
+        new_commands = []
+        for command in self.commands:
+            if not isinstance(command, Remark):
+                new_commands.append(command)
+        new_line = BasicLine('')
+        if new_commands:
+            new_line.line_number = self.line_number
+            new_line.commands = new_commands
+            return new_line
+        else:
+            return None
+
 
 class BasicProgram(object):
     r"""An object which represents a BASIC program.
@@ -239,6 +252,19 @@ class BasicProgram(object):
     >>> b.check_line_numbers()
     0
 
+    >>> b = BasicProgram('10 PRINT "HI":REM HELLO\n'
+    ...                  'PRINT "HELLO"\n'
+    ...                  'REM WHAT?\n'
+    ...                  '20 GOTO 30\n'
+    ...                  '30 REM THIS IS BUNK, MAN\n')
+    >>> b.strip_remarks()
+    >>> b.dump()
+    10 PRINT "HI"
+    PRINT "HELLO"
+    20 GOTO 30
+    >>> num_errors = b.check_line_numbers()
+    ?UNDEFINED STATEMENT "30" IN: 20 GOTO 30
+
     """
     def __init__(self, text=None):
         self.lines = []
@@ -279,6 +305,14 @@ class BasicProgram(object):
                 new_lines.append(line)
         self.lines = new_lines
 
+    def strip_remarks(self):
+        new_lines = []
+        for line in self.lines:
+            new_line = line.strip_remarks()
+            if new_line is not None:
+                new_lines.append(new_line)
+        self.lines = new_lines
+
     def dump(self):
         for line in self.lines:
             print line
@@ -300,6 +334,10 @@ if __name__ == '__main__':
                       action="store_true",
                       help="dump (possibly transformed) program to standard "
                            "output; implied by other options")
+    parser.add_option("-R", "--strip-remarks",
+                      dest="strip_remarks",
+                      action="store_true",
+                      help="strip all REM statements from program (implies -o)")
     parser.add_option("-t", "--test",
                       action="store_true", dest="test", default=False,
                       help="run internal test cases and exit")
@@ -318,6 +356,10 @@ if __name__ == '__main__':
     if options.strip_immediate_mode:
         options.dump_output = True
         p.strip_immediate_mode_commands()
+
+    if options.strip_remarks:
+        options.dump_output = True
+        p.strip_remarks()
 
     errors = 0
     if options.check_line_numbers:
