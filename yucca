@@ -26,27 +26,43 @@ import fileinput
 from optparse import OptionParser
 
 
+class LineNumber(object):
+    """An object representing the line number of a line in a
+    BASIC program.
+
+    The object retains any whitespace encountered while parsing
+    the line, and outputs it in its string representation.
+    
+    """
+    def __init__(self, text):
+        self.text = text
+        self.number = int(text)
+    
+    def __str__(self):
+        return self.text
+
+
 class BasicCommand(object):
     @classmethod
     def create(class_, text):
-        match = re.match(r'^\s*rem(.*)$', text, re.I)
+        match = re.match(r'^(\s*rem)(.*)$', text, re.I)
         if match:
-            return Remark(match.group(1))
-        match = re.match(r'^\s*goto\s*(\d+)\s*$', text, re.I)
+            return Remark(match.group(1), match.group(2))
+        match = re.match(r'^(\s*goto)(\s*\d+\s*)$', text, re.I)
         if match:
-            return Goto(int(match.group(1)))
-        match = re.match(r'^\s*gosub\s*(\d+)\s*$', text, re.I)
+            return Goto(match.group(1), LineNumber(match.group(2)))
+        match = re.match(r'^(\s*gosub)(\s*\d+\s*)$', text, re.I)
         if match:
-            return Gosub(int(match.group(1)))
-        match = re.match(r'^\s*(if(.*?)(then|goto))\s*(\d+)\s*$', text, re.I)
+            return Gosub(match.group(1), LineNumber(match.group(2)))
+        match = re.match(r'^(\s*if(.*?)(then|goto))(\s*\d+\s*)$', text, re.I)
         if match:
-            return IfThenLine(match.group(1), int(match.group(4)))
-        match = re.match(r'^\s*(if(.*?)then)\s*(.*?)\s*$', text, re.I)
+            return IfThenLine(match.group(1), LineNumber(match.group(4)))
+        match = re.match(r'^(\s*if(.*?)then)(.*?)$', text, re.I)
         if match:
             return IfThen(match.group(1), BasicCommand.create(match.group(3)))
-        match = re.match(r'^\s*(on(.*?)go(to|sub))\s*(.*?)\s*$', text, re.I)
+        match = re.match(r'^(\s*on(.*?)go(to|sub))(.*?)$', text, re.I)
         if match:
-            line_numbers = [int(x.strip()) for x in match.group(4).split(',')]
+            line_numbers = [LineNumber(x) for x in match.group(4).split(',')]
             return OnLines(match.group(1), line_numbers)
         return GenericCommand(text)
 
@@ -66,11 +82,12 @@ class GenericCommand(BasicCommand):
 
 
 class Remark(BasicCommand):
-    def __init__(self, text):
+    def __init__(self, command, text):
+        self.command = command
         self.text = text
 
     def __str__(self):
-        return "REM%s" % (self.text)
+        return "%s%s" % (self.command, self.text)
 
     def referenced_line_numbers(self):
         return []
@@ -82,7 +99,7 @@ class IfThen(BasicCommand):
         self.subsequent = subsequent
 
     def __str__(self):
-        return "%s %s" % (self.body, self.subsequent)
+        return "%s%s" % (self.body, self.subsequent)
 
     def referenced_line_numbers(self):
         return self.subsequent.referenced_line_numbers()
@@ -94,29 +111,31 @@ class IfThenLine(BasicCommand):
         self.line_number = line_number
 
     def __str__(self):
-        return "%s %s" % (self.body, self.line_number)
+        return "%s%s" % (self.body, self.line_number)
 
     def referenced_line_numbers(self):
         return [self.line_number]
 
 
 class Goto(BasicCommand):
-    def __init__(self, line_number):
+    def __init__(self, command, line_number):
+        self.command = command
         self.line_number = line_number
 
     def __str__(self):
-        return "GOTO %s" % self.line_number
+        return "%s%s" % (self.command, self.line_number)
 
     def referenced_line_numbers(self):
         return [self.line_number]
 
 
 class Gosub(BasicCommand):
-    def __init__(self, line_number):
+    def __init__(self, command, line_number):
+        self.command = command
         self.line_number = line_number
 
     def __str__(self):
-        return "GOSUB %s" % self.line_number
+        return "%s%s" % (self.command, self.line_number)
 
     def referenced_line_numbers(self):
         return [self.line_number]
@@ -128,8 +147,8 @@ class OnLines(BasicCommand):
         self.line_numbers = line_numbers
 
     def __str__(self):
-        return "%s %s" % (self.body,
-                          ','.join(str(x) for x in self.line_numbers))
+        return "%s%s" % (self.body,
+                         ','.join(str(x) for x in self.line_numbers))
 
     def referenced_line_numbers(self):
         return self.line_numbers
@@ -138,10 +157,13 @@ class OnLines(BasicCommand):
 class BasicLine(object):
     def __init__(self, text):
         self.line_number = None
+        if text is None:
+            self.command = None
+            return
         text = text.strip()
-        match = re.match(r'^(\d+)\s+(.*?)$', text)
+        match = re.match(r'^(\d+\s*)(.*?)$', text)
         if match:
-            self.line_number = int(match.group(1))
+            self.line_number = LineNumber(match.group(1))
             text = match.group(2)
 
         self.commands = []
@@ -176,7 +198,7 @@ class BasicLine(object):
     def __str__(self):
         text = ':'.join(str(x) for x in self.commands)
         if self.line_number:
-            return "%s %s" % (self.line_number, text)
+            return "%s%s" % (self.line_number, text)
         else:
             return text
 
@@ -191,8 +213,8 @@ class BasicLine(object):
         for command in self.commands:
             if not isinstance(command, Remark):
                 new_commands.append(command)
-        new_line = BasicLine('')
         if new_commands:
+            new_line = BasicLine(None)
             new_line.line_number = self.line_number
             new_line.commands = new_commands
             return new_line
@@ -202,6 +224,8 @@ class BasicLine(object):
 
 class BasicProgram(object):
     r"""An object which represents a BASIC program.
+
+    Rudimentary parsing of lines of commands:
 
     >>> b = BasicProgram('10 PRINT "HELLO"\n'
     ...                  '20 GOTO 10\n')
@@ -215,6 +239,8 @@ class BasicProgram(object):
     >>> print b.lines[1].commands[0].__class__.__name__
     Goto
 
+    Checking for jumps to non-existant line numbers:
+
     >>> b = BasicProgram()
     >>> b.add_line('10 PRINT "HELLO"')
     >>> b.add_line('20 GOTO 30')
@@ -225,13 +251,41 @@ class BasicProgram(object):
     >>> num_errors
     1
 
+    Checking for GOSUB and ON GOTO, and retaining case in
+    error messages:
+
     >>> b = BasicProgram('5 goSUb 10\n'
-    ...                  '7 goSUb 8\n'
-    ...                  '10 oN (X+1 )* 5  gOtO 100, 6')
+    ...                  '7goSUb8\n'
+    ...                  '10 oN (X+1 )* 5  gOtO 100,6')
     >>> num_errors = b.check_line_numbers()
     ?UNDEFINED STATEMENT "100" IN: 10 oN (X+1 )* 5  gOtO 100,6
     ?UNDEFINED STATEMENT "6" IN: 10 oN (X+1 )* 5  gOtO 100,6
-    ?UNDEFINED STATEMENT "8" IN: 7 GOSUB 8
+    ?UNDEFINED STATEMENT "8" IN: 7goSUb8
+
+    Whitespace and case is retained when dumping a program:
+
+    >>> b = BasicProgram('5 goSUb 10\n'
+    ...                  '7gOSub8\n'
+    ...                  '9   rem WHAT? ??:>?: >?\n'
+    ...                  '\n'
+    ...                  '800   PRINT::print:ZORK  30\n'
+    ...                  '10 oN   ERROR  gOtO 100, 6,7,  800  ,3\n'
+    ...                  'if50then60\n'
+    ...                  '50ifthisstuffistruegoto70\n'
+    ...                  '60 If  This Stuff Is True  Then   Print:GoTo  9\n'
+    ... )
+    >>> b.dump()
+    5 goSUb 10
+    7gOSub8
+    9   rem WHAT? ??:>?: >?
+    <BLANKLINE>
+    800   PRINT::print:ZORK  30
+    10 oN   ERROR  gOtO 100, 6,7,  800  ,3
+    if50then60
+    50ifthisstuffistruegoto70
+    60 If  This Stuff Is True  Then   Print:GoTo  9
+
+    Remarks may contain colons:
 
     >>> b = BasicProgram('10 REM HELLO: GOTO 20')
     >>> len(b.lines[0].commands)
@@ -240,6 +294,8 @@ class BasicProgram(object):
     Remark
     >>> b.check_line_numbers()
     0
+
+    Immediate mode commands are checked, and can be stripped:
 
     >>> b = BasicProgram('10 REM HELLO\n'
     ...                  'PRINT "HELLO"\n'
@@ -251,6 +307,9 @@ class BasicProgram(object):
     10 REM HELLO
     >>> b.check_line_numbers()
     0
+
+    Remarks, both on numbered lines and immediate mode, can be
+    stripped:
 
     >>> b = BasicProgram('10 PRINT "HI":REM HELLO\n'
     ...                  'PRINT "HELLO"\n'
@@ -282,7 +341,7 @@ class BasicProgram(object):
         text_file_line = 1
         for line in self.lines:
             if line.line_number is not None:
-                location = line.line_number
+                location = line.line_number.number
                 defined[location] = line
             else:
                 location = "IMMEDIATE MODE (line %d)" % text_file_line
@@ -290,11 +349,11 @@ class BasicProgram(object):
                   (line, text_file_line)
             referenced[location] = line.referenced_line_numbers()
             text_file_line += 1
-        for (line_number, referenced_line_numbers) in referenced.iteritems():
+        for (location, referenced_line_numbers) in referenced.iteritems():
             for referenced_line_number in referenced_line_numbers:
-                if referenced_line_number not in defined:
+                if referenced_line_number.number not in defined:
                     print '?UNDEFINED STATEMENT "%s" IN: %s' % (
-                        referenced_line_number, defined[line_number])
+                        referenced_line_number.number, defined[location])
                     errors += 1
         return errors
 

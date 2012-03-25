@@ -26,23 +26,24 @@ dialect-specific command that involves line numbers.
 THE BASIC PROGRAM to be analyzed must be present in a textual form.  
 Some emulators allow such text to be pasted in, to simulate entering it 
 at the 8-bit computer's keyboard; other tools are available to convert a 
-tokenized BASIC program to a textual form and back.
+tokenized BASIC program to a textual form and back.  `yucca` handles
+both styles of text file; it can even analyze and manipulate commands in
+immediate mode, in the case of the listing being a 'session transcript.'
 
 Case Studies
 ------------
 
 `yucca` has been successfully used on:
 
-* The editor for [Apple Befunge][]
-* The original version of [Bubble Escape][].
+* The editor for [Apple Befunge][] -- this is a 'session transcript';
+* The original version of [Bubble Escape][] -- this is the textual
+  conversion of the tokenized program.
 
 [Apple Befunge]: http://catseye.tc/projects/apple-befunge/
 [Bubble Escape]: http://bitbucket.org/catseye/bubble-escape/
 
 Usage
 -----
-
-(subject to change)
 
     yucca program.bas
 
@@ -72,8 +73,8 @@ immediately.
 TODO
 ----
 
-* Retain whitespace exactly when dumping/transforming a program.
 * Show a warning message if the program contains computed jumps.
+* Show errors in the order they occur in the program.
 
 Plans
 -----
@@ -82,10 +83,9 @@ Plans
 redundant `GOTO` to the next line, a line conaining another `GOTO`, and
 so forth.
 
-`yucca` can dump the input program with high fidelity; the only things that
-it will change are the case of commands such as `GOTO` and `GOSUB`, and
-whitespace in certain places, including around line numbers in an
-`ON ... GOTO` or `ON ... GOSUB`.  This facility could be built upon to give
-`yucca` the ability to renumber a program, or to supply missing line
-numbers, or even transform a program with textual labels into one with line
-numbers.
+`yucca` can dump the input program with high fidelity; it retains case
+and spacing of all lines, with the exception of stripping leading and
+trailing whitespace from every line.  This facility could be built upon
+to give `yucca` the ability to renumber a program, or to supply missing
+line numbers, or even transform a program with textual labels into one
+with line numbers.
