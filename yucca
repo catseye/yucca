@@ -29,6 +29,9 @@ from optparse import OptionParser
 class BasicCommand(object):
     @classmethod
     def create(class_, text):
+        match = re.match(r'^\s*rem(.*)$', text, re.I)
+        if match:
+            return Remark(match.group(1))
         match = re.match(r'^\s*goto\s*(\d+)\s*$', text, re.I)
         if match:
             return Goto(int(match.group(1)))
@@ -48,7 +51,7 @@ class BasicCommand(object):
         return GenericCommand(text)
 
     def referenced_line_numbers(self):
-        raise NotImplemented
+        raise NotImplementedError
 
 
 class GenericCommand(BasicCommand):
@@ -57,6 +60,17 @@ class GenericCommand(BasicCommand):
 
     def __str__(self):
         return self.text
+
+    def referenced_line_numbers(self):
+        return []
+
+
+class Remark(BasicCommand):
+    def __init__(self, text):
+        self.text = text
+
+    def __str__(self):
+        return "REM%s" % (self.text)
 
     def referenced_line_numbers(self):
         return []
@@ -198,9 +212,32 @@ class BasicProgram(object):
     >>> num_errors
     1
 
-    >>> b = BasicProgram('10 REM HELLO: GOTO 10')
+    >>> b = BasicProgram('5 goSUb 10\n'
+    ...                  '7 goSUb 8\n'
+    ...                  '10 oN (X+1 )* 5  gOtO 100, 6')
+    >>> num_errors = b.check_line_numbers()
+    ?UNDEFINED STATEMENT "100" IN: 10 oN (X+1 )* 5  gOtO 100,6
+    ?UNDEFINED STATEMENT "6" IN: 10 oN (X+1 )* 5  gOtO 100,6
+    ?UNDEFINED STATEMENT "8" IN: 7 GOSUB 8
+
+    >>> b = BasicProgram('10 REM HELLO: GOTO 20')
     >>> len(b.lines[0].commands)
     1
+    >>> print b.lines[0].commands[0].__class__.__name__
+    Remark
+    >>> b.check_line_numbers()
+    0
+
+    >>> b = BasicProgram('10 REM HELLO\n'
+    ...                  'PRINT "HELLO"\n'
+    ...                  'GOTO 20')
+    >>> num_errors = b.check_line_numbers()
+    ?UNDEFINED STATEMENT "20" IN: IMMEDIATE MODE COMMAND
+    >>> b.strip_immediate_mode_commands()
+    >>> b.dump()
+    10 REM HELLO
+    >>> b.check_line_numbers()
+    0
 
     """
     def __init__(self, text=None):
@@ -213,20 +250,33 @@ class BasicProgram(object):
         self.lines.append(BasicLine(line))
 
     def check_line_numbers(self):
-        referenced = {}
+        referenced = {'IMMEDIATE': []}
         defined = {}
         errors = 0
         for line in self.lines:
             if line.line_number is not None:
                 defined[line.line_number] = line
                 referenced[line.line_number] = line.referenced_line_numbers()
+            else:
+                referenced['IMMEDIATE'] += line.referenced_line_numbers()
         for (line_number, referenced_line_numbers) in referenced.iteritems():
             for referenced_line_number in referenced_line_numbers:
                 if referenced_line_number not in defined:
+                    if line_number == 'IMMEDIATE':
+                        error_location = 'IMMEDIATE MODE COMMAND'
+                    else:
+                        error_location = defined[line_number]
                     print '?UNDEFINED STATEMENT "%s" IN: %s' % (
-                        referenced_line_number, defined[line_number])
+                        referenced_line_number, error_location)
                     errors += 1
         return errors
+
+    def strip_immediate_mode_commands(self):
+        new_lines = []
+        for line in self.lines:
+            if line.line_number is not None:
+                new_lines.append(line)
+        self.lines = new_lines
 
     def dump(self):
         for line in self.lines:
@@ -235,15 +285,20 @@ class BasicProgram(object):
 
 if __name__ == '__main__':
     parser = OptionParser()
+    parser.add_option("-I", "--strip-immediate-mode",
+                      dest="strip_immediate_mode",
+                      action="store_true",
+                      help="strip immediate mode commands (implies -o)")
+    parser.add_option("-L", "--no-check-line-numbers",
+                      dest="check_line_numbers",
+                      default=True,
+                      action="store_false",
+                      help="do not check that all target line numbers exist")
     parser.add_option("-o", "--dump-output",
                       dest="dump_output",
                       action="store_true",
                       help="dump (possibly transformed) program to standard "
                            "output; implied by other options")
-    parser.add_option("-l", "--check-line-numbers",
-                      dest="check_line_numbers",
-                      action="store_true",
-                      help="check that all target line numbers exist")
     parser.add_option("-t", "--test",
                       action="store_true", dest="test", default=False,
                       help="run internal test cases and exit")
@@ -259,8 +314,11 @@ if __name__ == '__main__':
     for line in fileinput.input(args):
         p.add_line(line)
 
-    errors = 0
+    if options.strip_immediate_mode:
+        options.dump_output = True
+        p.strip_immediate_mode_commands()
 
+    errors = 0
     if options.check_line_numbers:
         errors += p.check_line_numbers()
 

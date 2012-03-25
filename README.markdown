@@ -28,29 +28,58 @@ Some emulators allow such text to be pasted in, to simulate entering it
 at the 8-bit computer's keyboard; other tools are available to convert a 
 tokenized BASIC program to a textual form and back.
 
+Case Studies
+------------
+
+`yucca` has been successfully used on:
+
+* The editor for [Apple Befunge][]
+* The original version of [Bubble Escape][].
+
+[Apple Befunge]: http://catseye.tc/projects/apple-befunge/
+[Bubble Escape]: http://bitbucket.org/catseye/bubble-escape/
+
 Usage
 -----
 
 (subject to change)
 
-    yucca -l program.bas
+    yucca program.bas
+
+Python's `fileinput` module is used, so the BASIC source can also be piped
+into `yucca`, and so forth.
+
+By default, the program is checked that the target of each jump is an
+existing line number.  This includes any jumps that may occur in immediate
+mode commands (i.e. commands with no line number) given in the text
+file.  If this check fails, further transformations may not be performed on
+the program.  To suppress this check, pass the -L option to `yucca`.
+
+The -o option may be given to dump a copy of the program to the standard
+output.  This option is implied by several other options.
+
+The -I option strips all immediate mode commands from the program before
+analyzing and outputting it.
+
+The -t option runs `yucca` through its internal test suite and exits
+immediately.
 
 TODO
 ----
 
-* Parse `REM` lines more accurately (they may contain colons.)
 * Retain whitespace exactly when dumping/transforming a program.
+* Better reporting for errors discovered in immediate mode commands.
 
 Plans
 -----
 
-yucca could be easily extended to warn about "code smells" such as a 
+`yucca` could be easily extended to warn about "code smells" such as a 
 redundant `GOTO` to the next line, `GOTO` to a `REM` line, and so forth.
 
-yucca can dump the input program with almost total fidelity; the only 
-thing that it will change (I think) is the whitespace around lines 
-numbers in an `ON ... GOTO` or `ON ... GOSUB`.  This could be built upon 
-to give yucca the ability to renumber a program, or to supply 
-missing line numbers, or even transform a program with textual labels 
-into one with line numbers.
-
+`yucca` can dump the input program with high fidelity; the only things that
+it will change are the case of commands such as `GOTO` and `GOSUB`, and
+whitespace in certain places, including around line numbers in an
+`ON ... GOTO` or `ON ... GOSUB`.  This facility could be built upon to give
+`yucca` the ability to renumber a program, or to supply missing line
+numbers, or even transform a program with textual labels into one with line
+numbers.
