@@ -364,9 +364,12 @@ class BasicProgram(object):
                 new_lines.append(line)
         self.lines = new_lines
 
-    def strip_remarks(self):
+    def strip_remarks(self, program_lines_only=False):
         new_lines = []
         for line in self.lines:
+            if program_lines_only and line.line_number is None:
+                new_lines.append(line)
+                continue
             new_line = line.strip_remarks()
             if new_line is not None:
                 new_lines.append(new_line)
@@ -393,6 +396,11 @@ if __name__ == '__main__':
                       action="store_true",
                       help="dump (possibly transformed) program to standard "
                            "output; implied by other options")
+    parser.add_option("-p", "--program-lines-only",
+                      dest="program_lines_only",
+                      action="store_true",
+                      help="have transformations only affect program lines, "
+                           "not immediate mode lines")
     parser.add_option("-R", "--strip-remarks",
                       dest="strip_remarks",
                       action="store_true",
@@ -418,7 +426,7 @@ if __name__ == '__main__':
 
     if options.strip_remarks:
         options.dump_output = True
-        p.strip_remarks()
+        p.strip_remarks(program_lines_only=options.program_lines_only)
 
     errors = 0
     if options.check_line_numbers:

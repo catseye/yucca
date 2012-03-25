@@ -67,6 +67,10 @@ before analyzing and outputting it.  Note that this happens before
 analysis, so that any jumps to lines which contain only a REM will be
 found and reported.
 
+The -p option causes all program transformations to act only on program
+lines, not on immediate mode lines.  Thus, in combination with -R, REMs
+on immediate mode lines are not removed.  It does not affect -I at all.
+
 The -t option runs `yucca` through its internal test suite and exits
 immediately.
 
