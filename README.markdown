@@ -68,7 +68,6 @@ TODO
 ----
 
 * Retain whitespace exactly when dumping/transforming a program.
-* Better reporting for errors discovered in immediate mode commands.
 
 Plans
 -----

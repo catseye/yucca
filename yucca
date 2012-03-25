@@ -232,7 +232,7 @@ class BasicProgram(object):
     ...                  'PRINT "HELLO"\n'
     ...                  'GOTO 20')
     >>> num_errors = b.check_line_numbers()
-    ?UNDEFINED STATEMENT "20" IN: IMMEDIATE MODE COMMAND
+    ?UNDEFINED STATEMENT "20" IN: GOTO 20 (immediate mode, text file line 3)
     >>> b.strip_immediate_mode_commands()
     >>> b.dump()
     10 REM HELLO
@@ -250,24 +250,25 @@ class BasicProgram(object):
         self.lines.append(BasicLine(line))
 
     def check_line_numbers(self):
-        referenced = {'IMMEDIATE': []}
+        referenced = {}
         defined = {}
         errors = 0
+        text_file_line = 1
         for line in self.lines:
             if line.line_number is not None:
-                defined[line.line_number] = line
-                referenced[line.line_number] = line.referenced_line_numbers()
+                location = line.line_number
+                defined[location] = line
             else:
-                referenced['IMMEDIATE'] += line.referenced_line_numbers()
+                location = "IMMEDIATE MODE (line %d)" % text_file_line
+                defined[location] = "%s (immediate mode, text file line %d)" % \
+                  (line, text_file_line)
+            referenced[location] = line.referenced_line_numbers()
+            text_file_line += 1
         for (line_number, referenced_line_numbers) in referenced.iteritems():
             for referenced_line_number in referenced_line_numbers:
                 if referenced_line_number not in defined:
-                    if line_number == 'IMMEDIATE':
-                        error_location = 'IMMEDIATE MODE COMMAND'
-                    else:
-                        error_location = defined[line_number]
                     print '?UNDEFINED STATEMENT "%s" IN: %s' % (
-                        referenced_line_number, error_location)
+                        referenced_line_number, defined[line_number])
                     errors += 1
         return errors
 
