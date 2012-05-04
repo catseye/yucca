@@ -36,10 +36,17 @@ class LineNumber(object):
     """
     def __init__(self, text):
         self.text = text
-        self.number = int(text)
+        self.number = -1
+        try:
+            self.number = int(text)
+        except ValueError:
+            pass
     
     def __str__(self):
         return self.text
+
+    def is_computed(self):
+        return re.match(r'^\s*\d+\s*$', self.text) is None
 
 
 class BasicCommand(object):
@@ -48,15 +55,19 @@ class BasicCommand(object):
         match = re.match(r'^(\s*rem)(.*)$', text, re.I)
         if match:
             return Remark(match.group(1), match.group(2))
-        match = re.match(r'^(\s*goto)(\s*\d+\s*)$', text, re.I)
+        match = re.match(r'^(\s*goto)(.*?)$', text, re.I)
         if match:
             return Goto(match.group(1), LineNumber(match.group(2)))
-        match = re.match(r'^(\s*gosub)(\s*\d+\s*)$', text, re.I)
+        match = re.match(r'^(\s*gosub)(.*?)$', text, re.I)
         if match:
             return Gosub(match.group(1), LineNumber(match.group(2)))
-        match = re.match(r'^(\s*if(.*?)(then|goto))(\s*\d+\s*)$', text, re.I)
+        match = re.match(r'^(\s*if(.*?)goto)(.*?)$', text, re.I)
         if match:
-            return IfThenLine(match.group(1), LineNumber(match.group(4)))
+            return IfThenLine(match.group(1), LineNumber(match.group(3)))
+        # I doubt many BASICs allow a computed goto right after a 'THEN'...
+        match = re.match(r'^(\s*if(.*?)then)(\s*\d+\s*)$', text, re.I)
+        if match:
+            return IfThenLine(match.group(1), LineNumber(match.group(3)))
         match = re.match(r'^(\s*if(.*?)then)(.*?)$', text, re.I)
         if match:
             return IfThen(match.group(1), BasicCommand.create(match.group(3)))
@@ -326,6 +337,16 @@ class BasicProgram(object):
     >>> num_errors = b.check_line_numbers()
     ?UNDEFINED STATEMENT "30" IN: 20 GOTO 30
 
+    Computed GOTOs/GOSUBs can be detected:
+
+    >>> b = BasicProgram('10 GOTO A * 4\n'
+    ...                  '20 GOSUB 6+7\n')
+    >>> num_errors = b.check_computed_jumps()
+    ?COMPUTED JUMP TO "A * 4" IN 10
+    ?COMPUTED JUMP TO "6+7" IN 20
+    >>> num_errors
+    2
+
     """
     def __init__(self, text=None):
         self.lines = []
@@ -359,6 +380,16 @@ class BasicProgram(object):
                     errors += 1
         return errors
 
+    def check_computed_jumps(self):
+        errors = 0
+        for line in self.lines:
+            for line_number in line.referenced_line_numbers():
+                if line_number.is_computed():
+                    print '?COMPUTED JUMP TO "%s" IN %s' % (
+                        str(line_number).strip(), line.line_number.number)
+                    errors += 1
+        return errors
+
     def strip_immediate_mode_commands(self):
         new_lines = []
         for line in self.lines:
@@ -384,6 +415,14 @@ class BasicProgram(object):
 
 if __name__ == '__main__':
     parser = OptionParser()
+    parser.add_option("-C", "--allow-computed-jumps",
+                      dest="allow_computed_jumps",
+                      default=False,
+                      action="store_true",
+                      help="acknowledge that the program contains computed "
+                           "GOTOs/GOSUBs, which cannot be analyzed by yucca; "
+                           "without this flag, any occurrence of a computed "
+                           "jump will be rejected as an error")
     parser.add_option("-I", "--strip-immediate-mode",
                       dest="strip_immediate_mode",
                       action="store_true",
@@ -431,9 +470,10 @@ if __name__ == '__main__':
         p.strip_remarks(program_lines_only=options.program_lines_only)
 
     errors = 0
+    if not options.allow_computed_jumps:
+        errors += p.check_computed_jumps()
     if options.check_line_numbers:
         errors += p.check_line_numbers()
-
     if errors > 0:
         sys.exit(1)
 
