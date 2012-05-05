@@ -26,6 +26,28 @@ import fileinput
 from optparse import OptionParser
 
 
+class Error(object):
+    """An object representing one of the possible violations that yucca
+    can raise in objection to a given BASIC program.
+
+    """
+    def __init__(self, line, line_number):
+        self.line = line
+        self.line_number = line_number
+
+
+class UndefinedStatement(Error):
+    def __str__(self):
+        return '?UNDEFINED STATEMENT "%s" IN: %s' % (
+            str(self.line_number).strip(), self.line.description)
+
+
+class ComputedJump(Error):
+    def __str__(self):
+        return '?COMPUTED JUMP TO "%s" IN: %s' % (
+            str(self.line_number).strip(), self.line.description)
+
+
 class LineNumber(object):
     """An object representing the line number of a line in a
     BASIC program.
@@ -166,8 +188,9 @@ class OnLines(BasicCommand):
 
 
 class BasicLine(object):
-    def __init__(self, text):
+    def __init__(self, text, text_file_line):
         self.line_number = None
+        self.text_file_line = text_file_line
         if text is None:
             self.command = None
             return
@@ -213,6 +236,15 @@ class BasicLine(object):
         else:
             return text
 
+    @property
+    def description(self):
+        """A description of this line, used in violation reports."""
+        if self.line_number:
+            return str(self)
+        else:
+            return "%s (immediate mode, text file line %d)" % \
+                (self, self.text_file_line)
+
     def referenced_line_numbers(self):
         line_numbers = []
         for command in self.commands:
@@ -225,7 +257,7 @@ class BasicLine(object):
             if not isinstance(command, Remark):
                 new_commands.append(command)
         if new_commands:
-            new_line = BasicLine(None)
+            new_line = BasicLine(None, self.text_file_line)
             new_line.line_number = self.line_number
             new_line.commands = new_commands
             return new_line
@@ -253,14 +285,12 @@ class BasicProgram(object):
     Checking for jumps to non-existant line numbers:
 
     >>> b = BasicProgram()
-    >>> b.add_line('10 PRINT "HELLO"')
-    >>> b.add_line('20 GOTO 30')
+    >>> b.add_line('10 PRINT "HELLO"', 1)
+    >>> b.add_line('20 GOTO 30', 2)
     >>> len(b.lines)
     2
-    >>> num_errors = b.check_line_numbers()
+    >>> for e in b.check_line_numbers(): print e
     ?UNDEFINED STATEMENT "30" IN: 20 GOTO 30
-    >>> num_errors
-    1
 
     Checking for GOSUB and ON GOTO, and retaining case in
     error messages:
@@ -268,7 +298,7 @@ class BasicProgram(object):
     >>> b = BasicProgram('5 goSUb 10\n'
     ...                  '7goSUb8\n'
     ...                  '10 oN (X+1 )* 5  gOtO 100,6')
-    >>> num_errors = b.check_line_numbers()
+    >>> for e in b.check_line_numbers(): print e
     ?UNDEFINED STATEMENT "100" IN: 10 oN (X+1 )* 5  gOtO 100,6
     ?UNDEFINED STATEMENT "6" IN: 10 oN (X+1 )* 5  gOtO 100,6
     ?UNDEFINED STATEMENT "8" IN: 7goSUb8
@@ -306,20 +336,20 @@ class BasicProgram(object):
     >>> print b.lines[0].commands[0].__class__.__name__
     Remark
     >>> b.check_line_numbers()
-    0
+    []
 
     Immediate mode commands are checked, and can be stripped:
 
     >>> b = BasicProgram('10 REM HELLO\n'
     ...                  'PRINT "HELLO"\n'
     ...                  'GOTO 20')
-    >>> num_errors = b.check_line_numbers()
+    >>> for e in b.check_line_numbers(): print e
     ?UNDEFINED STATEMENT "20" IN: GOTO 20 (immediate mode, text file line 3)
     >>> b.strip_immediate_mode_commands()
     >>> b.dump()
     10 REM HELLO
     >>> b.check_line_numbers()
-    0
+    []
 
     Remarks, both on numbered lines and immediate mode, can be
     stripped:
@@ -334,60 +364,65 @@ class BasicProgram(object):
     10 PRINT "HI"
     PRINT "HELLO"
     20 GOTO 30
-    >>> num_errors = b.check_line_numbers()
+    >>> for e in b.check_line_numbers(): print e
     ?UNDEFINED STATEMENT "30" IN: 20 GOTO 30
 
-    Computed GOTOs/GOSUBs can be detected:
+    Computed GOTOs/GOSUBs can be detected.  Note that a line number
+    computation cannot appear after the THEN in an IF...THEN because
+    it cannot readily be distinguished from a command.
 
     >>> b = BasicProgram('10 GOTO A * 4\n'
-    ...                  '20 GOSUB 6+7\n')
-    >>> num_errors = b.check_computed_jumps()
-    ?COMPUTED JUMP TO "A * 4" IN 10
-    ?COMPUTED JUMP TO "6+7" IN 20
-    >>> num_errors
-    2
+    ...                  '20 EARTH:AIR:WATER:FIRE:GOSUB 6+7\n'
+    ...                  '30 GOTO 30\n'
+    ...                  '35 GOTO 35.0\n'
+    ...                  '40 IFATHENP*40\n'
+    ...                  '50 IFAGOTOP*40\n'
+    ...                  'GOSUB -10*-1\n')
+    >>> for e in b.check_computed_jumps(): print e
+    ?COMPUTED JUMP TO "A * 4" IN: 10 GOTO A * 4
+    ?COMPUTED JUMP TO "6+7" IN: 20 EARTH:AIR:WATER:FIRE:GOSUB 6+7
+    ?COMPUTED JUMP TO "35.0" IN: 35 GOTO 35.0
+    ?COMPUTED JUMP TO "P*40" IN: 50 IFAGOTOP*40
+    ?COMPUTED JUMP TO "-10*-1" IN: GOSUB -10*-1 (immediate mode, text file line 7)
 
     """
     def __init__(self, text=None):
         self.lines = []
         if text is not None:
+            text_file_line = 1
             for line in text.rstrip('\r\n').split('\n'):
-                self.add_line(line)
+                self.add_line(line, text_file_line)
+                text_file_line += 1
 
-    def add_line(self, line):
-        self.lines.append(BasicLine(line))
+    def add_line(self, line, text_file_line):
+        self.lines.append(BasicLine(line, text_file_line))
 
     def check_line_numbers(self):
         referenced = {}
         defined = {}
-        errors = 0
+        errors = []
         text_file_line = 1
         for line in self.lines:
             if line.line_number is not None:
-                location = line.line_number.number
-                defined[location] = line
+                location = line.line_number.number  
             else:
-                location = "IMMEDIATE MODE (line %d)" % text_file_line
-                defined[location] = "%s (immediate mode, text file line %d)" % \
-                  (line, text_file_line)
+                location = "IMMEDIATE MODE (line %d)" % line.text_file_line
+            defined[location] = line
             referenced[location] = line.referenced_line_numbers()
             text_file_line += 1
         for (location, referenced_line_numbers) in referenced.iteritems():
             for referenced_line_number in referenced_line_numbers:
                 if referenced_line_number.number not in defined:
-                    print '?UNDEFINED STATEMENT "%s" IN: %s' % (
-                        referenced_line_number.number, defined[location])
-                    errors += 1
+                    errors.append(UndefinedStatement(defined[location],
+                        referenced_line_number))
         return errors
 
     def check_computed_jumps(self):
-        errors = 0
+        errors = []
         for line in self.lines:
             for line_number in line.referenced_line_numbers():
                 if line_number.is_computed():
-                    print '?COMPUTED JUMP TO "%s" IN %s' % (
-                        str(line_number).strip(), line.line_number.number)
-                    errors += 1
+                    errors.append(ComputedJump(line, line_number))
         return errors
 
     def strip_immediate_mode_commands(self):
@@ -458,8 +493,10 @@ if __name__ == '__main__':
         sys.exit(0)
 
     p = BasicProgram()
+    text_file_line = 1
     for line in fileinput.input(args):
-        p.add_line(line)
+        p.add_line(line, text_file_line)
+        text_file_line += 1
 
     if options.strip_immediate_mode:
         options.dump_output = True
@@ -469,12 +506,14 @@ if __name__ == '__main__':
         options.dump_output = True
         p.strip_remarks(program_lines_only=options.program_lines_only)
 
-    errors = 0
+    errors = []
     if not options.allow_computed_jumps:
         errors += p.check_computed_jumps()
     if options.check_line_numbers:
         errors += p.check_line_numbers()
-    if errors > 0:
+    if len(errors) > 0:
+        for error in errors:
+            print error
         sys.exit(1)
 
     if options.dump_output:
