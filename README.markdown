@@ -54,30 +54,37 @@ By default, the program is checked that the target of each jump is an
 existing line number.  This includes any jumps that may occur in immediate
 mode commands (i.e. commands with no line number) given in the text
 file.  If this check fails, further transformations may not be performed on
-the program.  To suppress this check, pass the -L option to `yucca`.
+the program.  To suppress this check, pass the `-L` option to `yucca`.
 
-The -o option may be given to dump a copy of the program to the standard
+`yucca` cannot analyze the validity of any computed line number in a BASIC
+program which contains computed `GOTO`s or `GOSUB`s.  To reduce the chance
+of an computed line number going unnoticed and unanalyzed, `yucca`'s
+default behavior is to report an error if it finds any computed `GOTO`s
+or `GOSUB`s in the input program.  To acknowledge that you are aware that
+the program contains computed jumps that `yucca` will not be able to
+analyze, pass the `-C` option to have `yucca` suppress these errors.
+
+The `-o` option may be given to dump a copy of the program to the standard
 output.  This option is implied by the following two options.
 
-The -I option strips all immediate mode commands from the program before
+The `-I` option strips all immediate mode commands from the program before
 analyzing and outputting it.
 
-The -R option strips all remarks (REM statements) from the program
+The `-R` option strips all remarks (`REM` statements) from the program
 before analyzing and outputting it.  Note that this happens before
-analysis, so that any jumps to lines which contain only a REM will be
+analysis, so that any jumps to lines which contain only a `REM` will be
 found and reported.
 
-The -p option causes all program transformations to act only on program
-lines, not on immediate mode lines.  Thus, in combination with -R, REMs
-on immediate mode lines are not removed.  It does not affect -I at all.
+The `-p` option causes all program transformations to act only on program
+lines, not on immediate mode lines.  Thus, in combination with `-R`, `REM`s
+on immediate mode lines are not removed.  It does not affect `-I` at all.
 
-The -t option runs `yucca` through its internal test suite and exits
+The `-t` option runs `yucca` through its internal test suite and exits
 immediately.
 
 TODO
 ----
 
-* Show a warning message if the program contains computed jumps.
 * Show errors in the order they occur in the program.
 * Handle duplicate and deleted lines (line number then nothing.)
 

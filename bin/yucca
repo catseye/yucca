@@ -83,9 +83,6 @@ class BasicCommand(object):
         match = re.match(r'^(\s*gosub)(.*?)$', text, re.I)
         if match:
             return Gosub(match.group(1), LineNumber(match.group(2)))
-        match = re.match(r'^(\s*if(.*?)goto)(.*?)$', text, re.I)
-        if match:
-            return IfThenLine(match.group(1), LineNumber(match.group(3)))
         # I doubt many BASICs allow a computed goto right after a 'THEN'...
         match = re.match(r'^(\s*if(.*?)then)(\s*\d+\s*)$', text, re.I)
         if match:
@@ -93,6 +90,11 @@ class BasicCommand(object):
         match = re.match(r'^(\s*if(.*?)then)(.*?)$', text, re.I)
         if match:
             return IfThen(match.group(1), BasicCommand.create(match.group(3)))
+        # We do this check *after* the above two, so as to not accidentally
+        # match something like IF A THEN PRINT "HI":GOTO 50...
+        match = re.match(r'^(\s*if(.*?)goto)(.*?)$', text, re.I)
+        if match:
+            return IfThenLine(match.group(1), LineNumber(match.group(3)))
         match = re.match(r'^(\s*on(.*?)go(to|sub))(.*?)$', text, re.I)
         if match:
             line_numbers = [LineNumber(x) for x in match.group(4).split(',')]
@@ -377,13 +379,25 @@ class BasicProgram(object):
     ...                  '35 GOTO 35.0\n'
     ...                  '40 IFATHENP*40\n'
     ...                  '50 IFAGOTOP*40\n'
+    ...                  '60 ONAGOTO10,20,70\n'
     ...                  'GOSUB -10*-1\n')
     >>> for e in b.check_computed_jumps(): print e
     ?COMPUTED JUMP TO "A * 4" IN: 10 GOTO A * 4
     ?COMPUTED JUMP TO "6+7" IN: 20 EARTH:AIR:WATER:FIRE:GOSUB 6+7
     ?COMPUTED JUMP TO "35.0" IN: 35 GOTO 35.0
     ?COMPUTED JUMP TO "P*40" IN: 50 IFAGOTOP*40
-    ?COMPUTED JUMP TO "-10*-1" IN: GOSUB -10*-1 (immediate mode, text file line 7)
+    ?COMPUTED JUMP TO "-10*-1" IN: GOSUB -10*-1 (immediate mode, text file line 8)
+
+    Computed GOTOs/GOSUBs are not analyzed for validity as jump targets.
+
+    >>> for e in b.check_line_numbers(): print e
+    ?UNDEFINED STATEMENT "70" IN: 60 ONAGOTO10,20,70
+
+    >>> b = BasicProgram('418 IF IR%>=92 THEN ON IR%-91 GOTO 361,311,321,331')
+    >>> print b.lines[0].commands[0].__class__.__name__
+    IfThen
+    >>> len([e for e in b.check_computed_jumps()])
+    0
 
     """
     def __init__(self, text=None):
@@ -412,6 +426,8 @@ class BasicProgram(object):
             text_file_line += 1
         for (location, referenced_line_numbers) in referenced.iteritems():
             for referenced_line_number in referenced_line_numbers:
+                if referenced_line_number.is_computed():
+                    continue
                 if referenced_line_number.number not in defined:
                     errors.append(UndefinedStatement(defined[location],
                         referenced_line_number))
