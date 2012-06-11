@@ -1,6 +1,8 @@
 yucca
 =====
 
+_Version 1.0, June 10 2012_
+
 IT SO HAPPENS in the course of human events that one may find oneself 
 cross-developing an 8-bit BASIC program from a modern development 
 environment.
@@ -10,7 +12,7 @@ modern development environment to increase one's confidence that the
 cross-developed code is correct.
 
 IT IS FOR THIS PURPOSE that _yucca_ was developed.  It is a small Python 
-program which can perform static analysis on 8-bit BASIC programs.  
+program which can perform static analysis on 8-bit BASIC programs.
 Specifically, it can, at present, check that every line number which is 
 a target of a jump is actually present in the program.  If it is not, an 
 error message describing the inconsistency is given.
@@ -23,7 +25,7 @@ be dialect-agnostic, with the unavoidable limitation that it cannot
 recognize (and thus will not check) computed `GOTO`s or any 
 dialect-specific command that involves line numbers.
 
-THE BASIC PROGRAM to be analyzed must be present in a textual form.  
+THE BASIC PROGRAM to be analyzed must be present in a textual form.
 Some emulators allow such text to be pasted in, to simulate entering it 
 at the 8-bit computer's keyboard; other tools are available to convert a 
 tokenized BASIC program to a textual form and back.  `yucca` handles
@@ -50,7 +52,7 @@ Usage
 Python's `fileinput` module is used, so the BASIC source can also be piped
 into `yucca`, and so forth.
 
-By default, the program is checked that the target of each jump is an
+By default, `yucca` checks that the target of each jump in the program is an
 existing line number.  This includes any jumps that may occur in immediate
 mode commands (i.e. commands with no line number) given in the text
 file.  If this check fails, further transformations may not be performed on
@@ -87,12 +89,13 @@ TODO
 
 * Show errors in the order they occur in the program.
 * Handle duplicate and deleted lines (line number then nothing.)
+* Support `GO TO` form of `GOTO` found in some BASICs.
 
 Plans
 -----
 
 `yucca` could be easily extended to warn about "code smells" such as a 
-redundant `GOTO` to the next line, a line conaining another `GOTO`, and
+redundant `GOTO` to the next line, a line containing another `GOTO`, and
 so forth.
 
 `yucca` can dump the input program with (as far as I can tell) total
