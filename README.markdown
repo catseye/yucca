@@ -42,7 +42,7 @@ Case Studies
   conversion of the tokenized program.
 
 [Apple Befunge]: http://catseye.tc/projects/apple-befunge/
-[Bubble Escape]: http://bitbucket.org/catseye/bubble-escape/
+[Bubble Escape]: http://catseye.tc/projects/bubble-escape/
 
 Usage
 -----
@@ -83,13 +83,6 @@ on immediate mode lines are not removed.  It does not affect `-I` at all.
 
 The `-t` option runs `yucca` through its internal test suite and exits
 immediately.
-
-TODO
-----
-
-* Show errors in the order they occur in the program.
-* Handle duplicate and deleted lines (line number then nothing.)
-* Support `GO TO` form of `GOTO` found in some BASICs.
 
 Plans
 -----
