@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # yucca -- dialect-agnostic static analyzer for 8-bit BASIC programs
-# Version 1.0, June 10 2012
+# Version 1.1-pre
 
 # Copyright (c)2012 Chris Pressey, Cat's Eye Technologies
 #
@@ -48,6 +48,12 @@ class UndefinedStatement(Error):
 class ComputedJump(Error):
     def __str__(self):
         return '?COMPUTED JUMP TO "%s" IN: %s' % (
+            str(self.line_number).strip(), self.line.description)
+
+
+class OutOfSequence(Error):
+    def __str__(self):
+        return '?OUT OF SEQUENCE LINE "%s" IN: %s' % (
             str(self.line_number).strip(), self.line.description)
 
 
@@ -372,6 +378,25 @@ class BasicProgram(object):
     >>> for e in b.check_line_numbers(): print e
     ?UNDEFINED STATEMENT "30" IN: 20 GOTO 30
 
+    Proper (sequential) ordering of line numbers can be checked for.
+
+    >>> b = BasicProgram('10 PRINT "HI":REM HELLO\n'
+    ...                  'PRINT "IMMEDIATE MODE"\n'
+    ...                  '20 GOTO 30\n'
+    ...                  '30 PRINT "HI"\n')
+    >>> b.check_ascending()
+    []
+    >>> b = BasicProgram('10 PRINT\n'
+    ...                  '20 PRINT\n'
+    ...                  '20 GOTO 30\n'
+    ...                  '30 PRINT\n'
+    ...                  '40 GOTO 30\n'
+    ...                  '60 GOTO 30\n'
+    ...                  '50 GOTO 30\n')
+    >>> for e in b.check_ascending(): print e
+    ?OUT OF SEQUENCE LINE "20" IN: 20 GOTO 30
+    ?OUT OF SEQUENCE LINE "50" IN: 50 GOTO 30
+
     Computed GOTOs/GOSUBs can be detected.  Note that a line number
     computation cannot appear after the THEN in an IF...THEN because
     it cannot readily be distinguished from a command.
@@ -413,6 +438,17 @@ class BasicProgram(object):
 
     def add_line(self, line, text_file_line):
         self.lines.append(BasicLine(line, text_file_line))
+
+    def check_ascending(self):
+        errors = []
+        last_line_number = None
+        text_file_line = 1
+        for line in self.lines:
+            if line.line_number is not None and last_line_number is not None:
+                if line.line_number.number <= last_line_number.number:
+                    errors.append(OutOfSequence(line, line.line_number))
+            last_line_number = line.line_number
+        return errors
 
     def check_line_numbers(self):
         referenced = {}
@@ -469,6 +505,12 @@ class BasicProgram(object):
 
 if __name__ == '__main__':
     parser = OptionParser()
+    parser.add_option("-A", "--no-check-ascending",
+                      dest="check_ascending",
+                      default=True,
+                      action="store_false",
+                      help="do not check that line numbers are given in "
+                           "strictly ascending order")
     parser.add_option("-C", "--allow-computed-jumps",
                       dest="allow_computed_jumps",
                       default=False,
@@ -526,6 +568,8 @@ if __name__ == '__main__':
         p.strip_remarks(program_lines_only=options.program_lines_only)
 
     errors = []
+    if options.check_ascending:
+        errors += p.check_ascending()
     if not options.allow_computed_jumps:
         errors += p.check_computed_jumps()
     if options.check_line_numbers:

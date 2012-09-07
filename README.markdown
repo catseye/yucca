@@ -1,7 +1,7 @@
 yucca
 =====
 
-_Version 1.0, June 10 2012_
+_Version 1.1-pre_
 
 IT SO HAPPENS in the course of human events that one may find oneself 
 cross-developing an 8-bit BASIC program from a modern development 
@@ -51,6 +51,13 @@ Usage
 
 Python's `fileinput` module is used, so the BASIC source can also be piped
 into `yucca`, and so forth.
+
+By default, `yucca` checks that each line number in the program source is
+given in strictly ascending order.  Some tokenizers (e.g. `petcat`) will
+happily tokenize a program source into a tokenized program with
+out-of-sequence and/or duplicate line numbers, and this option prevents
+that from happening.  To suppress this check, give the `-A` option on the
+command line.
 
 By default, `yucca` checks that the target of each jump in the program is an
 existing line number.  This includes any jumps that may occur in immediate
