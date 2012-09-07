@@ -50,7 +50,8 @@ Usage
     yucca program.bas
 
 Python's `fileinput` module is used, so the BASIC source can also be piped
-into `yucca`, and so forth.
+into `yucca`, and so forth.  Error messages are printed on the standard error
+stream.
 
 By default, `yucca` checks that each line number in the program source is
 given in strictly ascending order.  Some tokenizers (e.g. `petcat`) will

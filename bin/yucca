@@ -576,7 +576,7 @@ if __name__ == '__main__':
         errors += p.check_line_numbers()
     if len(errors) > 0:
         for error in errors:
-            print error
+            sys.stderr.write("%s\n" % error)
         sys.exit(1)
 
     if options.dump_output:
