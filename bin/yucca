@@ -392,6 +392,7 @@ class BasicProgram(object):
     ...                  '30 PRINT\n'
     ...                  '40 GOTO 30\n'
     ...                  '60 GOTO 30\n'
+    ...                  'PRINT "IMMEDIATE MODE"\n'
     ...                  '50 GOTO 30\n')
     >>> for e in b.check_ascending(): print e
     ?OUT OF SEQUENCE LINE "20" IN: 20 GOTO 30
@@ -444,10 +445,11 @@ class BasicProgram(object):
         last_line_number = None
         text_file_line = 1
         for line in self.lines:
-            if line.line_number is not None and last_line_number is not None:
-                if line.line_number.number <= last_line_number.number:
-                    errors.append(OutOfSequence(line, line.line_number))
-            last_line_number = line.line_number
+            if line.line_number is not None:
+                if last_line_number is not None:
+                    if line.line_number.number <= last_line_number.number:
+                        errors.append(OutOfSequence(line, line.line_number))
+                last_line_number = line.line_number
         return errors
 
     def check_line_numbers(self):
