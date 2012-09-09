@@ -206,6 +206,7 @@ class BasicLine(object):
             self.command = None
             return
         text = text.rstrip('\r\n')
+        self.text = text
         match = re.match(r'^(\s*\d+\s*)(.*?)$', text)
         if match:
             self.line_number = LineNumber(match.group(1))
@@ -428,6 +429,29 @@ class BasicProgram(object):
     >>> len([e for e in b.check_computed_jumps()])
     0
 
+    Symbolic constants defined within the program can be collected
+    and expanded.
+
+    >>> b = BasicProgram('[value]=10\n'
+    ...                  '[xyz]=PRINT\n'
+    ...                  '10 FORI=1TO[value]:[xyz]I:NEXT\n')
+    >>> b.dump()
+    [value]=10
+    [xyz]=PRINT
+    10 FORI=1TO[value]:[xyz]I:NEXT
+    >>> d = b.collect_symbols()
+    >>> sorted(d.keys())
+    ['value', 'xyz']
+    >>> d['value']
+    '10'
+    >>> d['xyz']
+    'PRINT'
+    >>> b.dump()
+    10 FORI=1TO[value]:[xyz]I:NEXT
+    >>> b.expand_symbols(d)
+    >>> b.dump()
+    10 FORI=1TO10:PRINTI:NEXT
+
     """
     def __init__(self, text=None):
         self.lines = []
@@ -500,6 +524,30 @@ class BasicProgram(object):
                 new_lines.append(new_line)
         self.lines = new_lines
 
+    def collect_symbols(self):
+        symbols = {}
+        new_lines = []
+        for line in self.lines:
+            match = re.match(r'^\[(.*?)\]=(.*?)$', line.text)
+            if match:
+                symbols[match.group(1)] = match.group(2)
+            else:
+                new_lines.append(line)
+        self.lines = new_lines
+        return symbols
+
+    def expand_symbols(self, symbols):
+        new_lines = []
+        for line in self.lines:
+            text = line.text
+            text_file_line = line.text_file_line
+            for symbol in symbols:
+                pattern = re.escape('[%s]' % symbol)
+                text = re.sub(pattern, symbols[symbol], text)
+            new_line = BasicLine(text, text_file_line)
+            new_lines.append(new_line)
+        self.lines = new_lines
+
     def dump(self):
         for line in self.lines:
             print line
@@ -547,6 +595,11 @@ if __name__ == '__main__':
     parser.add_option("-t", "--test",
                       action="store_true", dest="test", default=False,
                       help="run internal test cases and exit")
+    parser.add_option("-x", "--expand-symbols",
+                      dest="expand_symbols",
+                      action="store_true",
+                      help="expand symbolic names defined in the source file "
+                           "(implies -o)")
 
     (options, args) = parser.parse_args()
 
@@ -560,6 +613,11 @@ if __name__ == '__main__':
     for line in fileinput.input(args):
         p.add_line(line, text_file_line)
         text_file_line += 1
+
+    if options.expand_symbols:
+        options.dump_output = True
+        symbols = p.collect_symbols()
+        p.expand_symbols(symbols)
 
     if options.strip_immediate_mode:
         options.dump_output = True

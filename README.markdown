@@ -37,12 +37,17 @@ Case Studies
 
 `yucca` has been successfully used on:
 
-* The editor for [Apple Befunge][] -- this is a 'session transcript';
-* The original version of [Bubble Escape][] -- this is the textual
-  conversion of the tokenized program.
+* The editor for [Apple Befunge][] -- `APPLE BEFUNGE EDITOR.bas` is a
+  'session transcript' intended to be pasted into an emulator;
+* The original version of [Bubble Escape][] -- `bubble escape.bas` is a
+  text file detokenized from the original tokenized program;
+* [Dungeons of Ekileugor][] -- an original text file, intended to be
+  passed through a C pre-processor and `yucca`, then passed to `petcat`,
+  to create a tokenized VIC-20 BASIC program.
 
 [Apple Befunge]: http://catseye.tc/projects/apple-befunge/
 [Bubble Escape]: http://catseye.tc/projects/bubble-escape/
+[Dungeons of Ekileugor]: https://github.com/catseye/Dungeons-of-Ekileugor
 
 Usage
 -----
@@ -88,6 +93,13 @@ found and reported.
 The `-p` option causes all program transformations to act only on program
 lines, not on immediate mode lines.  Thus, in combination with `-R`, `REM`s
 on immediate mode lines are not removed.  It does not affect `-I` at all.
+
+The `-x` option allows symbol constants to be defined in, and expanded in,
+a yucca source.  A symbolic constant is any alphanumeric token inside
+square bracket.  A symbolic constant is defined by placing it as the first
+thing on a line, followed immediately by an equals sign, followed immediately
+by the value it represents.  Such lines will be stripped, and the values for
+those constants expanded in other lines, when `-x` is given.
 
 The `-t` option runs `yucca` through its internal test suite and exits
 immediately.
