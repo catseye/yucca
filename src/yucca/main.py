@@ -603,8 +603,12 @@ def main():
 
     if options.test:
         import doctest
-        doctest.testmod()
-        sys.exit(0)
+        (fails, something) = doctest.testmod()
+        if fails == 0:
+            print "All tests passed."
+            sys.exit(0)
+        else:
+            sys.exit(1)
 
     p = BasicProgram()
     text_file_line = 1
