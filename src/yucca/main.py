@@ -61,7 +61,7 @@ class LineNumber(object):
 
     The object retains any whitespace encountered while parsing
     the line, and outputs it in its string representation.
-    
+
     """
     def __init__(self, text):
         self.text = text
@@ -465,7 +465,6 @@ class BasicProgram(object):
     def check_ascending(self):
         errors = []
         last_line_number = None
-        text_file_line = 1
         for line in self.lines:
             if line.line_number is not None:
                 if last_line_number is not None:
