@@ -602,9 +602,8 @@ def main():
 
     if options.test:
         import doctest
-        (fails, something) = doctest.testmod()
+        (fails, something) = doctest.testmod(sys.modules[__name__], verbose=True)
         if fails == 0:
-            print "All tests passed."
             sys.exit(0)
         else:
             sys.exit(1)
