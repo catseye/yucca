@@ -1,7 +1,7 @@
 yucca
 =====
 
-_Version 1.1-pre_
+_Version 1.1_
 
 IT SO HAPPENS in the course of human events that one may find oneself 
 cross-developing an 8-bit BASIC program from a modern development 
