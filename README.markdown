@@ -42,12 +42,13 @@ Case Studies
 * The original version of [Bubble Escape][] -- `bubble escape.bas` is a
   text file detokenized from the original tokenized program;
 * [Dungeons of Ekileugor][] -- an original text file, intended to be
-  passed through a C pre-processor and `yucca`, then passed to `petcat`,
-  to create a tokenized VIC-20 BASIC program.
+  checked and stripped by `yucca`, then passed to a tokenizer such as
+  `petcat` or [hatoucan][] to create a loadable VIC-20 BASIC program file.
 
-[Apple Befunge]: http://catseye.tc/projects/apple-befunge/
-[Bubble Escape]: http://catseye.tc/projects/bubble-escape/
-[Dungeons of Ekileugor]: https://github.com/catseye/Dungeons-of-Ekileugor
+[Apple Befunge]: http://catseye.tc/node/Apple_Befunge
+[Bubble Escape]: http://catseye.tc/node/Bubble_Escape
+[Dungeons of Ekileugor]: http://catseye.tc/node/Dungeons_of_Ekileugor
+[hatoucan]: http://catseye.tc/node/hatoucan
 
 Usage
 -----
