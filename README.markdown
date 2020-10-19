@@ -1,7 +1,13 @@
 yucca
 =====
 
-_Version 1.1_
+Version 1.1 | _Entry_ [@ catseye.tc](https://catseye.tc/node/yucca)
+| _See also:_ [hatoucan](https://github.com/catseye/hatoucan#readme)
+∘ [Bubble Escape](https://github.com/catseye/Bubble-Escape#readme)
+∘ [Dungeons of Ekileugor](https://github.com/catseye/Dungeons-of-Ekileugor#readme)
+∘ [Apple Befunge](https://github.com/catseye/Apple-Befunge#readme)
+
+- - - -
 
 IT SO HAPPENS in the course of human events that one may find oneself 
 cross-developing an 8-bit BASIC program from a modern development 
