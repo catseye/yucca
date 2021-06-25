@@ -70,7 +70,7 @@ class LineNumber(object):
             self.number = int(text)
         except ValueError:
             pass
-    
+
     def __str__(self):
         return self.text
 
@@ -287,9 +287,9 @@ class BasicProgram(object):
     20 GOTO 10
     >>> len(b.lines)
     2
-    >>> print b.lines[0].commands[0]
+    >>> print(b.lines[0].commands[0])
     PRINT "HELLO"
-    >>> print b.lines[1].commands[0].__class__.__name__
+    >>> print(b.lines[1].commands[0].__class__.__name__)
     Goto
 
     Checking for jumps to non-existant line numbers:
@@ -299,7 +299,7 @@ class BasicProgram(object):
     >>> b.add_line('20 GOTO 30', 2)
     >>> len(b.lines)
     2
-    >>> for e in b.check_line_numbers(): print e
+    >>> for e in b.check_line_numbers(): print(e)
     ?UNDEFINED STATEMENT "30" IN: 20 GOTO 30
 
     Checking for GOSUB and ON GOTO, and retaining case in
@@ -308,10 +308,10 @@ class BasicProgram(object):
     >>> b = BasicProgram('5 goSUb 10\n'
     ...                  '7goSUb8\n'
     ...                  '10 oN (X+1 )* 5  gOtO 100,6')
-    >>> for e in b.check_line_numbers(): print e
+    >>> for e in b.check_line_numbers(): print(e)
+    ?UNDEFINED STATEMENT "8" IN: 7goSUb8
     ?UNDEFINED STATEMENT "100" IN: 10 oN (X+1 )* 5  gOtO 100,6
     ?UNDEFINED STATEMENT "6" IN: 10 oN (X+1 )* 5  gOtO 100,6
-    ?UNDEFINED STATEMENT "8" IN: 7goSUb8
 
     Whitespace and case is retained when dumping a program:
 
@@ -343,7 +343,7 @@ class BasicProgram(object):
     >>> b = BasicProgram('10 REM HELLO: GOTO 20')
     >>> len(b.lines[0].commands)
     1
-    >>> print b.lines[0].commands[0].__class__.__name__
+    >>> print(b.lines[0].commands[0].__class__.__name__)
     Remark
     >>> b.check_line_numbers()
     []
@@ -353,7 +353,7 @@ class BasicProgram(object):
     >>> b = BasicProgram('10 REM HELLO\n'
     ...                  'PRINT "HELLO"\n'
     ...                  'GOTO 20')
-    >>> for e in b.check_line_numbers(): print e
+    >>> for e in b.check_line_numbers(): print(e)
     ?UNDEFINED STATEMENT "20" IN: GOTO 20 (immediate mode, text file line 3)
     >>> b.strip_immediate_mode_commands()
     >>> b.dump()
@@ -374,7 +374,7 @@ class BasicProgram(object):
     10 PRINT "HI"
     PRINT "HELLO"
     20 GOTO 30
-    >>> for e in b.check_line_numbers(): print e
+    >>> for e in b.check_line_numbers(): print(e)
     ?UNDEFINED STATEMENT "30" IN: 20 GOTO 30
 
     Proper (sequential) ordering of line numbers can be checked for.
@@ -393,7 +393,7 @@ class BasicProgram(object):
     ...                  '60 GOTO 30\n'
     ...                  'PRINT "IMMEDIATE MODE"\n'
     ...                  '50 GOTO 30\n')
-    >>> for e in b.check_ascending(): print e
+    >>> for e in b.check_ascending(): print(e)
     ?OUT OF SEQUENCE LINE "20" IN: 20 GOTO 30
     ?OUT OF SEQUENCE LINE "50" IN: 50 GOTO 30
 
@@ -409,7 +409,7 @@ class BasicProgram(object):
     ...                  '50 IFAGOTOP*40\n'
     ...                  '60 ONAGOTO10,20,70\n'
     ...                  'GOSUB -10*-1\n')
-    >>> for e in b.check_computed_jumps(): print e
+    >>> for e in b.check_computed_jumps(): print(e)
     ?COMPUTED JUMP TO "A * 4" IN: 10 GOTO A * 4
     ?COMPUTED JUMP TO "6+7" IN: 20 EARTH:AIR:WATER:FIRE:GOSUB 6+7
     ?COMPUTED JUMP TO "35.0" IN: 35 GOTO 35.0
@@ -418,11 +418,11 @@ class BasicProgram(object):
 
     Computed GOTOs/GOSUBs are not analyzed for validity as jump targets.
 
-    >>> for e in b.check_line_numbers(): print e
+    >>> for e in b.check_line_numbers(): print(e)
     ?UNDEFINED STATEMENT "70" IN: 60 ONAGOTO10,20,70
 
     >>> b = BasicProgram('418 IF IR%>=92 THEN ON IR%-91 GOTO 361,311,321,331')
-    >>> print b.lines[0].commands[0].__class__.__name__
+    >>> print(b.lines[0].commands[0].__class__.__name__)
     IfThen
     >>> len([e for e in b.check_computed_jumps()])
     0
@@ -480,19 +480,21 @@ class BasicProgram(object):
         text_file_line = 1
         for line in self.lines:
             if line.line_number is not None:
-                location = line.line_number.number  
+                location = line.line_number.number
             else:
                 location = "IMMEDIATE MODE (line %d)" % line.text_file_line
             defined[location] = line
             referenced[location] = line.referenced_line_numbers()
             text_file_line += 1
-        for (location, referenced_line_numbers) in referenced.iteritems():
+        for location in sorted(referenced.keys(), key=lambda x: x if re.match(r'^\d+$', str(x)) else 0):
+            referenced_line_numbers = referenced[location]
             for referenced_line_number in referenced_line_numbers:
                 if referenced_line_number.is_computed():
                     continue
                 if referenced_line_number.number not in defined:
-                    errors.append(UndefinedStatement(defined[location],
-                        referenced_line_number))
+                    errors.append(
+                        UndefinedStatement(defined[location], referenced_line_number)
+                    )
         return errors
 
     def check_computed_jumps(self):
@@ -547,7 +549,7 @@ class BasicProgram(object):
 
     def dump(self):
         for line in self.lines:
-            print line
+            print(line)
 
 
 def main():
