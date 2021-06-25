@@ -1,7 +1,7 @@
 yucca
 =====
 
-Version 1.1 | _Entry_ [@ catseye.tc](https://catseye.tc/node/yucca)
+Version 1.2 | _Entry_ [@ catseye.tc](https://catseye.tc/node/yucca)
 | _See also:_ [hatoucan](https://github.com/catseye/hatoucan#readme)
 ∘ [Bubble Escape](https://github.com/catseye/Bubble-Escape#readme)
 ∘ [Dungeons of Ekileugor](https://github.com/catseye/Dungeons-of-Ekileugor#readme)

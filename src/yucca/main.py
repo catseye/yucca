@@ -1,7 +1,7 @@
 # yucca -- dialect-agnostic static analyzer for 8-bit BASIC programs
-# Version 1.1-pre
+# Version 1.2
 
-# Copyright (c)2012 Chris Pressey, Cat's Eye Technologies
+# Copyright (c)2012-2021 Chris Pressey, Cat's Eye Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
