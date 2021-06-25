@@ -70,7 +70,7 @@ class LineNumber(object):
             self.number = int(text)
         except ValueError:
             pass
-    
+
     def __str__(self):
         return self.text
 
@@ -492,8 +492,9 @@ class BasicProgram(object):
                 if referenced_line_number.is_computed():
                     continue
                 if referenced_line_number.number not in defined:
-                    errors.append(UndefinedStatement(defined[location],
-                        referenced_line_number))
+                    errors.append(
+                        UndefinedStatement(defined[location], referenced_line_number)
+                    )
         return errors
 
     def check_computed_jumps(self):
