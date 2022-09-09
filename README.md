@@ -115,8 +115,8 @@ Plans
 -----
 
 `yucca` could be easily extended to warn about "code smells" such as a 
-redundant `GOTO` to the next line, a line containing another `GOTO`, and
-so forth.
+redundant `GOTO` to the next line, a `GOTO` to a line containing only
+another `GOTO`, and so forth.
 
 `yucca` can dump the input program with (as far as I can tell) total
 fidelity; it retains case and spacing of all lines, even leading and
