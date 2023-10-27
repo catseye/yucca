@@ -2,10 +2,10 @@ yucca
 =====
 
 Version 1.2 | _Entry_ [@ catseye.tc](https://catseye.tc/node/yucca)
-| _See also:_ [hatoucan](https://github.com/catseye/hatoucan#readme)
-∘ [Bubble Escape](https://github.com/catseye/Bubble-Escape#readme)
-∘ [Dungeons of Ekileugor](https://github.com/catseye/Dungeons-of-Ekileugor#readme)
-∘ [Apple Befunge](https://github.com/catseye/Apple-Befunge#readme)
+| _See also:_ [hatoucan](https://codeberg.org/catseye/hatoucan#hatoucan)
+∘ [Bubble Escape](https://codeberg.org/catseye/Bubble-Escape#bubble-escape)
+∘ [Dungeons of Ekileugor](https://codeberg.org/catseye/Dungeons-of-Ekileugor#dungeons-of-ekileugor)
+∘ [Apple Befunge](https://codeberg.org/catseye/Apple-Befunge#apple-befunge)
 
 - - - -
 
